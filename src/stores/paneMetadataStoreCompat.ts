@@ -1,11 +1,14 @@
 import { create } from "zustand";
 
+export type AgentStatus = "working" | "waiting" | "done" | "idle";
+
 export interface PaneMetadata {
   lastLogLine?: string;
   notificationCount?: number;
   cwd?: string;
   gitBranch?: string;
   processTitle?: string;
+  agentStatus?: AgentStatus;
 }
 
 export interface PaneMetadataState {

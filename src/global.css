@@ -164,6 +164,12 @@ canvas {
   background: var(--cmux-accent) !important;
 }
 
+/* Agent status dot pulse */
+@keyframes agentPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
 /* Flash / attention animation */
 @keyframes paneFlash {
   0%   { opacity: 0; }

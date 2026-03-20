@@ -13,6 +13,7 @@ import {
   getTerminalConfig,
 } from "../../lib/ipc";
 import { usePaneMetadataStore, useUiStore } from "../../stores/workspaceStore";
+import type { AgentStatus } from "../../stores/paneMetadataStoreCompat";
 import { useKeybindingStore } from "../../stores/keybindingStore";
 import { useThemeStore } from "../../stores/themeStore";
 import type { ITheme } from "@xterm/xterm";
@@ -27,6 +28,7 @@ interface XTermWrapperProps {
   fontFamily?: string;
   suppressNotifications?: boolean;
   onZoomToggle?: () => void;
+  onUrlClick?: (url: string) => void;
   cwd?: string;
 }
 
@@ -110,6 +112,7 @@ export default memo(function XTermWrapper({
   fontFamily,
   suppressNotifications = false,
   onZoomToggle,
+  onUrlClick,
   cwd,
 }: XTermWrapperProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -184,7 +187,11 @@ export default memo(function XTermWrapper({
       term.loadAddon(fitAddon);
       term.loadAddon(searchAddon);
       term.loadAddon(new WebLinksAddon((_e, uri) => {
-        open(uri).catch(err => console.error("Failed to open URL:", err));
+        if (onUrlClick) {
+          onUrlClick(uri);
+        } else {
+          open(uri).catch(err => console.error("Failed to open URL:", err));
+        }
       }));
 
       term.open(container!);
@@ -269,7 +276,22 @@ export default memo(function XTermWrapper({
 
           if (lastLine.length > 0 && lastLine !== _lastParsedOut) {
             _lastParsedOut = lastLine;
-            usePaneMetadataStore.getState().setMetadata(sessionId, { lastLogLine: lastLine });
+
+            // Detect Claude Code agent status from output patterns
+            let agentStatus: AgentStatus | undefined;
+            const stripped = lastLine.replace(/\x1b\[[0-9;]*m/g, "").trim();
+            if (/(\u2737|\u2731|esc to interrupt)/i.test(stripped) || /working\.\.\./i.test(stripped)) {
+              agentStatus = "working";
+            } else if (/\?\s*(Yes|No|\[y\/n\])/i.test(stripped) || /do you want to/i.test(stripped) || /press enter/i.test(stripped)) {
+              agentStatus = "waiting";
+            } else if (/\u2713\s*(done|complete|finished)/i.test(stripped) || /^>\s*$/.test(stripped) || /\$\s*$/.test(stripped)) {
+              agentStatus = "done";
+            }
+
+            usePaneMetadataStore.getState().setMetadata(sessionId, {
+              lastLogLine: lastLine,
+              ...(agentStatus ? { agentStatus } : {}),
+            });
             // Trigger notification only when pane is not active and not suppressed
             if (!suppressNotifications) {
               const activePaneId = useUiStore.getState().activePaneId;

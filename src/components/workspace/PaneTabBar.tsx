@@ -2,6 +2,7 @@ import { memo } from "react";
 import type { Pane, PaneTab } from "../../types";
 import { getAgent, getDefaultAgent } from "../../lib/agents";
 import { usePaneMetadataStore } from "../../stores/workspaceStore";
+import type { AgentStatus } from "../../stores/paneMetadataStoreCompat";
 
 interface PaneTabBarProps {
   pane: Pane;
@@ -59,6 +60,32 @@ const GlobeIcon = () => (
   </svg>
 );
 
+const STATUS_CONFIG: Record<AgentStatus, { color: string; title: string; pulse: boolean }> = {
+  working: { color: "#f9e2af", title: "Working", pulse: true },
+  waiting: { color: "#f38ba8", title: "Waiting for input", pulse: false },
+  done:    { color: "#a6e3a1", title: "Done", pulse: false },
+  idle:    { color: "transparent", title: "", pulse: false },
+};
+
+function AgentStatusDot({ status }: { status: AgentStatus }) {
+  const cfg = STATUS_CONFIG[status];
+  if (status === "idle" || !cfg) return null;
+  return (
+    <span
+      title={cfg.title}
+      style={{
+        width: 5,
+        height: 5,
+        borderRadius: "50%",
+        background: cfg.color,
+        flexShrink: 0,
+        boxShadow: cfg.pulse ? `0 0 4px ${cfg.color}` : "none",
+        animation: cfg.pulse ? "agentPulse 1.2s ease-in-out infinite" : "none",
+      }}
+    />
+  );
+}
+
 export default memo(function PaneTabBar({
   pane,
   hasNotification,
@@ -69,9 +96,7 @@ export default memo(function PaneTabBar({
   onRemoveTab,
   onSelectTab,
 }: PaneTabBarProps) {
-  const paneMeta = usePaneMetadataStore((s) => s.metadata[pane.sessionId]);
-  const paneCwd = paneMeta?.cwd;
-  const processTitle = paneMeta?.processTitle;
+  const allMetadata = usePaneMetadataStore((s) => s.metadata);
 
   return (
     <div
@@ -96,12 +121,16 @@ export default memo(function PaneTabBar({
         {pane.tabs.map((tab) => {
           const agent = getAgent(tab.agentId) ?? getDefaultAgent();
           const isActive = tab.id === pane.activeTabId;
+          const tabMeta = allMetadata[tab.sessionId];
+          const tabProcessTitle = tabMeta?.processTitle;
+          const tabCwd = tabMeta?.cwd;
+          const agentStatus = tabMeta?.agentStatus ?? "idle";
           const label = tab.label
             ?? (tab.type === "browser"
               ? "Browser"
-              : processTitle
-                ? processTitle
-                : (isActive && paneCwd ? paneCwd.split("/").pop() || agent.name : agent.name));
+              : tabProcessTitle
+                ? tabProcessTitle
+                : (isActive && tabCwd ? tabCwd.split("/").pop() || agent.name : agent.name));
 
           return (
             <div
@@ -128,6 +157,8 @@ export default memo(function PaneTabBar({
               {hasNotification && isActive && (
                 <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#ff3b30", flexShrink: 0 }} />
               )}
+              {/* agent status badge (only on terminal tabs) */}
+              {tab.type !== "browser" && <AgentStatusDot status={agentStatus} />}
               {/* folder icon */}
               <span style={{ color: isActive ? "var(--cmux-accent)" : "var(--cmux-text-tertiary)", flexShrink: 0 }}>
                 <FolderIcon />
