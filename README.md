@@ -123,5 +123,5 @@ GPL v3 - See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- Inspired by [cmux](https://github.com/anthropics/cmux) from Anthropic
+- Inspired by [cmux](https://github.com/anthropics/cmux) from ManaFlow
 - Built with [Tauri](https://tauri.app/), [xterm.js](https://xtermjs.org/), and [React](https://react.dev/)
