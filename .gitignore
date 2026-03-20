@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-cmux-ui/
+src-tauri/target/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Reference materials (not part of the project)
+cmux/
+.reference/
+BridgeSpace.deb
+
+# AI tool directories
+.agent/
+.agents/
+.claude/
+.factory/
+.kilocode/
+.qwen/
+.serena/
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Tauri
+src-tauri/WixTools/
+src-tauri/target/

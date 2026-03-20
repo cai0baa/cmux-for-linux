@@ -1,0 +1,185 @@
+:root {
+  --cmux-bg: #0a0a0a;
+  --cmux-sidebar: #1E1E1E;
+  --cmux-accent: #0A84FF;
+  --cmux-border: rgba(255, 255, 255, 0.1);
+  --cmux-text: rgba(255, 255, 255, 0.9);
+  --cmux-text-secondary: rgba(255, 255, 255, 0.6);
+  --cmux-text-tertiary: rgba(255, 255, 255, 0.3);
+  --cmux-title-bg: #111111;
+  --cmux-surface: #161616;
+  --cmux-hover: rgba(255, 255, 255, 0.06);
+}
+
+.ui-cmux {
+  --cmux-bg: #0b0b0c;
+  --cmux-sidebar: #141415;
+  --cmux-title-bg: #0f0f10;
+  --cmux-surface: #151516;
+  --cmux-accent: #3b82f6;
+  --cmux-border: rgba(255, 255, 255, 0.08);
+  --cmux-text: #ededed;
+  --cmux-text-secondary: #b2b2b2;
+  --cmux-text-tertiary: #7c7c7c;
+  --cmux-hover: rgba(255, 255, 255, 0.07);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--cmux-bg);
+  color: var(--cmux-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.cmux-pill {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 9999px;
+  /* Efeito Capsule */
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Sidebar tab item: show close button on hover */
+div:hover>.tab-close-btn {
+  opacity: 1 !important;
+}
+
+/* xterm.js overrides for crisp rendering */
+.xterm {
+  padding: 0;
+  background: transparent;
+}
+
+.xterm-viewport {
+  overflow-y: hidden !important;
+  background: transparent !important;
+}
+
+/* Pane action buttons */
+.pane-action-btn {
+  background: none;
+  border: none;
+  color: var(--cmux-text-tertiary);
+  cursor: pointer;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+  transition: color 0.1s, background 0.1s;
+}
+.pane-action-btn:hover {
+  color: var(--cmux-text);
+  background: var(--cmux-hover);
+}
+
+.cmux-title-btn:hover {
+  background: var(--cmux-hover) !important;
+  color: var(--cmux-text) !important;
+}
+
+.cmux-workspace-item {
+  border: 1px solid transparent;
+}
+
+.cmux-workspace-item:hover {
+  background: var(--cmux-hover) !important;
+  border-color: var(--cmux-border);
+}
+
+.pane-tabbar {
+  background: var(--cmux-surface) !important;
+}
+
+.pane-tab-pill {
+  border-right-color: var(--cmux-border) !important;
+}
+
+.pane-tab-pill:hover {
+  background: var(--cmux-hover) !important;
+}
+
+.pane-tab-pill.is-active {
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+.ui-cmux .pane-tab-label {
+  font-family: "SF Mono", "Geist Mono", "JetBrains Mono", monospace !important;
+}
+
+.xterm-screen {
+  image-rendering: pixelated;
+  background: transparent;
+}
+
+/* WebKitGTK font rendering improvements */
+.xterm-rows {
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+/* Force subpixel rendering for sharper glyphs on Linux/WebKitGTK */
+canvas {
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* Collapse allotment sash to 1px — eliminates the 8px black stripe between split panes.
+   !important needed because allotment/dist/style.css loads after global.css and would override. */
+:root {
+  --sash-size: 1px !important;
+}
+
+/* Keep a thin visible divider and accent it on hover */
+[class*="sash"] {
+  background: transparent !important;
+}
+
+[class*="sash"]::before {
+  background: var(--cmux-border) !important;
+  transition: background 0.15s;
+}
+[class*="sash"]:hover::before,
+[class*="sash"][class*="active"]::before {
+  background: var(--cmux-accent) !important;
+}
+
+/* Flash / attention animation */
+@keyframes paneFlash {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  40%  { opacity: 0.3; }
+  65%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
