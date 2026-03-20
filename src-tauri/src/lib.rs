@@ -41,6 +41,13 @@ pub fn run() {
             commands::window::claim_leader,
             commands::window::get_window_count,
             socket::socket_response,
+            commands::browser::browser_create,
+            commands::browser::browser_destroy,
+            commands::browser::browser_set_bounds,
+            commands::browser::browser_navigate,
+            commands::browser::browser_eval,
+            commands::browser::browser_status,
+            commands::browser::browser_snapshot,
         ])
         .setup(|#[allow(unused)] app| {
             use tauri::Manager;
@@ -48,8 +55,37 @@ pub fn run() {
             let app_handle = app.handle().clone();
             let state = app.state::<AppState>();
             pty::monitor::start_monitor(app_handle.clone(), state.session_manager.clone());
-            
-            socket::start_socket_listener(app_handle);
+
+            socket::start_socket_listener(app_handle.clone());
+
+            // Initialize browser manager with GTK Fixed container on Linux.
+            // We use gtk::Overlay so the Fixed floats on top of the Tauri webview
+            // without pushing it down (pack_start would add it below as a sibling).
+            #[cfg(target_os = "linux")]
+            {
+                use gtk::prelude::*;
+                let webview_window = app.get_webview_window("main").unwrap();
+                let gtk_window = webview_window.gtk_window().unwrap();
+                let vbox = webview_window.default_vbox().unwrap();
+
+                // Restructure: ApplicationWindow → Overlay → vbox
+                //                                          ↘ Fixed (floats on top)
+                gtk_window.remove(&vbox);
+                let overlay = gtk::Overlay::new();
+                overlay.add(&vbox);
+                let fixed = gtk::Fixed::new();
+                fixed.set_can_focus(false);
+                overlay.add_overlay(&fixed);
+                overlay.set_overlay_pass_through(&fixed, true);
+                overlay.show_all();
+                gtk_window.add(&overlay);
+
+                app.manage(commands::browser::BrowserManager::new(fixed));
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                app.manage(commands::browser::BrowserManager::new());
+            }
 
             #[cfg(debug_assertions)]
             {
