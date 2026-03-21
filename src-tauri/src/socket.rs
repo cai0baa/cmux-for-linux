@@ -3,8 +3,8 @@ use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{UnixListener, UnixStream};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
 
 pub struct SocketState {
@@ -40,19 +40,25 @@ pub fn socket_response(
 }
 
 async fn handle_connection(
-    mut stream: UnixStream,
+    stream: TcpStream,
     app: AppHandle,
 ) {
     let state = app.state::<SocketState>();
-    let mut buf = vec![0u8; 8192];
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    let mut line = String::new();
+    
     loop {
-        match stream.read(&mut buf).await {
+        line.clear();
+        match reader.read_line(&mut line).await {
             Ok(0) => break, // Connection closed
-            Ok(n) => {
-                let data = &buf[..n];
-                // Try to parse JSON. Assuming one JSON object per message for simplicity.
-                // In a real production environment, you'd buffer and split by newlines or use framing.
-                if let Ok(mut parsed) = serde_json::from_slice::<Value>(data) {
+            Ok(_) => {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                
+                if let Ok(mut parsed) = serde_json::from_str::<Value>(trimmed) {
                     if let Some(obj) = parsed.as_object_mut() {
                         let cmd = obj.get("cmd").and_then(|v| v.as_str()).unwrap_or("").to_string();
                         let args = obj.remove("args").unwrap_or(Value::Null);
@@ -67,8 +73,9 @@ async fn handle_connection(
                             // Wait for frontend response
                             if let Ok(resp) = rx.await {
                                 let resp_json = serde_json::to_string(&resp).unwrap_or_default();
-                                let _ = stream.write_all(resp_json.as_bytes()).await;
-                                let _ = stream.write_all(b"\n").await;
+                                let _ = writer.write_all(resp_json.as_bytes()).await;
+                                let _ = writer.write_all(b"\n").await;
+                                let _ = writer.flush().await;
                             }
                         } else {
                             state.pending_requests.remove(&id);
@@ -78,8 +85,9 @@ async fn handle_connection(
                                 error: Some("Frontend not ready".to_string()),
                             };
                             let resp_json = serde_json::to_string(&err_resp).unwrap_or_default();
-                            let _ = stream.write_all(resp_json.as_bytes()).await;
-                            let _ = stream.write_all(b"\n").await;
+                            let _ = writer.write_all(resp_json.as_bytes()).await;
+                            let _ = writer.write_all(b"\n").await;
+                            let _ = writer.flush().await;
                         }
                     }
                 }
@@ -89,21 +97,53 @@ async fn handle_connection(
     }
 }
 
-pub fn start_socket_listener(app: AppHandle) {
-    // Create socket path
+/// Get the path to the port file for socket discovery
+fn get_port_file_path() -> std::path::PathBuf {
+    let mut path = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/tmp"));
+    path.push(".ptrterminal");
+    std::fs::create_dir_all(&path).ok();
+    path.push("ptr.port");
+    path
+}
+
+/// Clean up old Unix socket file if it exists (for migration from old versions)
+fn cleanup_legacy_socket() {
     let mut socket_path = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/tmp"));
     socket_path.push(".ptrterminal");
-    std::fs::create_dir_all(&socket_path).ok();
     socket_path.push("ptr.sock");
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+pub fn start_socket_listener(app: AppHandle) {
+    // Clean up legacy Unix socket if migrating
+    cleanup_legacy_socket();
     
-    let _ = std::fs::remove_file(&socket_path); // Remove if exists
+    let port_file = get_port_file_path();
     
     tauri::async_runtime::spawn(async move {
-        match UnixListener::bind(&socket_path) {
+        // Bind to localhost with port 0 to get a random available port
+        match TcpListener::bind("127.0.0.1:0").await {
             Ok(listener) => {
-                println!("Socket listening on {:?}", socket_path);
+                let addr = listener.local_addr().expect("Failed to get local address");
+                let port = addr.port();
+                
+                // Write port to file for CLI tools to discover
+                if let Err(e) = std::fs::write(&port_file, port.to_string()) {
+                    eprintln!("Failed to write port file: {}", e);
+                    return;
+                }
+                
+                println!("Socket listening on 127.0.0.1:{}", port);
+                println!("Port file: {:?}", port_file);
+                
                 loop {
-                    if let Ok((stream, _)) = listener.accept().await {
+                    if let Ok((stream, peer_addr)) = listener.accept().await {
+                        // Only accept connections from localhost for security
+                        if !peer_addr.ip().is_loopback() {
+                            eprintln!("Rejected non-localhost connection from {}", peer_addr);
+                            continue;
+                        }
+                        
                         let app_clone = app.clone();
                         tauri::async_runtime::spawn(async move {
                             handle_connection(stream, app_clone).await;
@@ -112,8 +152,17 @@ pub fn start_socket_listener(app: AppHandle) {
                 }
             }
             Err(e) => {
-                eprintln!("Failed to bind socket: {}", e);
+                eprintln!("Failed to bind TCP socket: {}", e);
             }
         }
     });
+}
+
+/// Read the port from the port file (for use by CLI tools)
+#[allow(dead_code)]
+pub fn read_socket_port() -> Option<u16> {
+    let port_file = get_port_file_path();
+    std::fs::read_to_string(&port_file)
+        .ok()
+        .and_then(|s| s.trim().parse().ok())
 }

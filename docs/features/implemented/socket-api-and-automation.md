@@ -2,7 +2,7 @@
 
 ## Overview
 
-Unix domain socket exposing a JSON-RPC API for external control, plus a CLI tool (`ptr`) for scripting terminal operations.
+TCP socket API on localhost exposing a JSON-RPC API for external control, plus a CLI tool (`ptr`) for scripting terminal operations. Uses TCP for cross-platform compatibility (Windows, macOS, Linux).
 
 ## cmux Reference
 - Unix socket at `~/.cmux/cmux.sock`
@@ -16,14 +16,14 @@ Unix domain socket exposing a JSON-RPC API for external control, plus a CLI tool
 - CLI wrapper: `cmux <command> [args]` translates to socket messages
 - JSON request/response protocol with streaming for output
 
-## ptrterminal Requirements
+## ptrterminal Implementation
 
-| Layer | What's Needed |
-|-------|---------------|
-| Rust | `src-tauri/src/socket/` module — Unix socket listener |
-| Rust | JSON-RPC message parser and dispatcher |
-| Rust | Command handlers mapped to existing Tauri command logic |
-| CLI | `ptr` binary (separate Rust crate or shell script wrapping `socat`) |
+| Layer | Implementation |
+|-------|----------------|
+| Rust | `src-tauri/src/socket.rs` — TCP listener on `127.0.0.1:<random_port>` |
+| Rust | JSON message parser and frontend dispatcher |
+| Discovery | Port written to `~/.ptrterminal/ptr.port` |
+| CLI | `ptr` binary reads port file, connects via TCP |
 | Protocol | JSON messages: `{"cmd": "workspace.new", "args": {...}}` |
 
 ## Suggested Command Set (Phase 1)
@@ -39,9 +39,10 @@ theme.set         theme.list
 
 ## Key Decisions
 
-- **Socket path**: `~/.ptrterminal/ptr.sock` or `$XDG_RUNTIME_DIR/ptr.sock`
-- **Protocol**: Simple JSON-RPC 2.0 over Unix socket
-- **Auth**: No auth needed — socket permissions provide access control
+- **Transport**: TCP on localhost (`127.0.0.1`) for cross-platform support
+- **Port discovery**: Random port, written to `~/.ptrterminal/ptr.port`
+- **Protocol**: Simple JSON-RPC over TCP, newline-delimited messages
+- **Security**: Only accepts connections from loopback addresses
 - **Streaming**: Optional for `pane.output` command (subscribe to PTY output)
 
 ## Priority: **Medium**

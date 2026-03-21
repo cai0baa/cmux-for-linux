@@ -1,3 +1,4 @@
+mod browser;
 mod commands;
 mod db;
 mod events;
@@ -58,33 +59,24 @@ pub fn run() {
 
             socket::start_socket_listener(app_handle.clone());
 
-            // Initialize browser manager with GTK Fixed container on Linux.
-            // We use gtk::Overlay so the Fixed floats on top of the Tauri webview
-            // without pushing it down (pack_start would add it below as a sibling).
+            // Initialize platform-specific browser manager.
+            // Linux: GTK Overlay with webkit2gtk
+            // macOS: NSView with WKWebView (stub)
+            // Windows: HWND with WebView2 (stub)
             #[cfg(target_os = "linux")]
             {
-                use gtk::prelude::*;
                 let webview_window = app.get_webview_window("main").unwrap();
-                let gtk_window = webview_window.gtk_window().unwrap();
-                let vbox = webview_window.default_vbox().unwrap();
-
-                // Restructure: ApplicationWindow → Overlay → vbox
-                //                                          ↘ Fixed (floats on top)
-                gtk_window.remove(&vbox);
-                let overlay = gtk::Overlay::new();
-                overlay.add(&vbox);
-                let fixed = gtk::Fixed::new();
-                fixed.set_can_focus(false);
-                overlay.add_overlay(&fixed);
-                overlay.set_overlay_pass_through(&fixed, true);
-                overlay.show_all();
-                gtk_window.add(&overlay);
-
-                app.manage(commands::browser::BrowserManager::new(fixed));
+                let fixed = browser::linux::LinuxBrowserManager::init_gtk_overlay(&webview_window)
+                    .expect("Failed to initialize GTK overlay for browser panes");
+                app.manage(browser::PlatformBrowserManager::new(fixed));
             }
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(target_os = "macos")]
             {
-                app.manage(commands::browser::BrowserManager::new());
+                app.manage(browser::PlatformBrowserManager::new());
+            }
+            #[cfg(target_os = "windows")]
+            {
+                app.manage(browser::PlatformBrowserManager::new());
             }
 
             #[cfg(debug_assertions)]

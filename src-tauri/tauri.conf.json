@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "CMux Linux",
+  "productName": "CMux",
   "version": "0.1.3",
-  "identifier": "com.cai0baa.cmuxlinux",
+  "identifier": "com.cai0baa.cmux",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "CMux Linux",
+        "title": "CMux",
         "width": 1200,
         "height": 800,
         "resizable": true,
@@ -26,24 +26,37 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "appimage",
-      "deb"
-    ],
+    "targets": "all",
     "category": "Utility",
-    "shortDescription": "Linux terminal workspace manager",
-    "longDescription": "CMux Linux is a Linux-native terminal workspace manager built with Tauri and React.",
-    "linux": {
-      "deb": {
-        "depends": []
-      }
-    },
+    "shortDescription": "Cross-platform terminal workspace manager",
+    "longDescription": "CMux is a cross-platform terminal workspace manager built with Tauri and React. Features include workspaces, split panes, embedded browser, and a socket API for automation.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    },
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": null,
+      "frameworks": [],
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": null
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": null,
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      }
+    }
   }
 }

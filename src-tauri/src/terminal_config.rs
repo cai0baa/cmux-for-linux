@@ -56,23 +56,54 @@ impl Default for UserColors {
     }
 }
 
+/// Get the user's home directory in a cross-platform way
+fn get_home_dir() -> PathBuf {
+    dirs::home_dir().unwrap_or_else(|| {
+        // Fallback for edge cases
+        #[cfg(windows)]
+        {
+            PathBuf::from(
+                std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
+            )
+        }
+        #[cfg(not(windows))]
+        {
+            PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()))
+        }
+    })
+}
+
+/// Get the config directory in a cross-platform way
+/// - Linux/macOS: ~/.config
+/// - Windows: %APPDATA% (e.g., C:\Users\<user>\AppData\Roaming)
+fn get_config_dir() -> PathBuf {
+    dirs::config_dir().unwrap_or_else(|| get_home_dir().join(".config"))
+}
+
 /// Detect and load the user's terminal config.
 /// Merges: font/size from ghostty (if present), colors from the best available source.
 pub fn load() -> TerminalUserConfig {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
-    let home = PathBuf::from(home);
+    let home = get_home_dir();
+    let config_dir = get_config_dir();
 
     // Each loader returns Option<(font_family, font_size, Option<UserColors>)>
-    let ghostty = load_ghostty(&home);
-    let alacritty = load_alacritty(&home);
-    let kitty = load_kitty(&home);
+    let ghostty = load_ghostty(&home, &config_dir);
+    let alacritty = load_alacritty(&home, &config_dir);
+    let kitty = load_kitty(&config_dir);
 
-    // Prefer ghostty for font settings, then alacritty, then kitty
+    // Windows Terminal (Windows only)
+    #[cfg(windows)]
+    let windows_terminal = load_windows_terminal(&home);
+    #[cfg(not(windows))]
+    let windows_terminal: Option<(String, f32, Option<UserColors>)> = None;
+
+    // Prefer ghostty for font settings, then alacritty, then kitty, then Windows Terminal
     let font_family = ghostty
         .as_ref()
         .map(|(f, _, _)| f.clone())
         .or_else(|| alacritty.as_ref().map(|(f, _, _)| f.clone()))
         .or_else(|| kitty.as_ref().map(|(f, _, _)| f.clone()))
+        .or_else(|| windows_terminal.as_ref().map(|(f, _, _)| f.clone()))
         .unwrap_or_else(system_monospace_font);
 
     let font_size = ghostty
@@ -80,6 +111,7 @@ pub fn load() -> TerminalUserConfig {
         .map(|(_, s, _)| *s)
         .or_else(|| alacritty.as_ref().map(|(_, s, _)| *s))
         .or_else(|| kitty.as_ref().map(|(_, s, _)| *s))
+        .or_else(|| windows_terminal.as_ref().map(|(_, s, _)| *s))
         .unwrap_or(14.0);
 
     // For colors: prefer whichever source has explicit palette entries
@@ -87,6 +119,7 @@ pub fn load() -> TerminalUserConfig {
         .and_then(|(_, _, c)| c)
         .or_else(|| alacritty.and_then(|(_, _, c)| c))
         .or_else(|| kitty.and_then(|(_, _, c)| c))
+        .or_else(|| windows_terminal.and_then(|(_, _, c)| c))
         .unwrap_or_default();
 
     TerminalUserConfig {
@@ -98,9 +131,21 @@ pub fn load() -> TerminalUserConfig {
 
 // ─── Ghostty ──────────────────────────────────────────────────────────────────
 
-fn load_ghostty(home: &PathBuf) -> Option<(String, f32, Option<UserColors>)> {
-    let config_path = home.join(".config/ghostty/config");
-    let content = std::fs::read_to_string(&config_path).ok()?;
+fn load_ghostty(home: &PathBuf, config_dir: &PathBuf) -> Option<(String, f32, Option<UserColors>)> {
+    // Ghostty config locations:
+    // - Linux: ~/.config/ghostty/config
+    // - macOS: ~/Library/Application Support/com.mitchellh.ghostty/config or ~/.config/ghostty/config
+    // - Windows: %APPDATA%\ghostty\config (if it ever supports Windows)
+
+    let possible_paths = [
+        config_dir.join("ghostty/config"),
+        #[cfg(target_os = "macos")]
+        home.join("Library/Application Support/com.mitchellh.ghostty/config"),
+    ];
+
+    let content = possible_paths
+        .iter()
+        .find_map(|p| std::fs::read_to_string(p).ok())?;
 
     let mut font_family = system_monospace_font();
     let mut font_size = 14.0f32;
@@ -184,14 +229,31 @@ fn parse_ghostty_colors(content: &str) -> Option<UserColors> {
 
 // ─── Alacritty ────────────────────────────────────────────────────────────────
 
-fn load_alacritty(home: &PathBuf) -> Option<(String, f32, Option<UserColors>)> {
-    // Check omarchy theme first (it's the active one on this machine).
-    let omarchy_theme = home.join(".config/omarchy/current/theme/alacritty.toml");
-    let main_config = home.join(".config/alacritty/alacritty.toml");
+fn load_alacritty(
+    home: &PathBuf,
+    config_dir: &PathBuf,
+) -> Option<(String, f32, Option<UserColors>)> {
+    // Alacritty config locations:
+    // - Linux: ~/.config/alacritty/alacritty.toml
+    // - macOS: ~/.config/alacritty/alacritty.toml or ~/Library/Application Support/alacritty/alacritty.toml
+    // - Windows: %APPDATA%\alacritty\alacritty.toml
 
-    let theme_content = std::fs::read_to_string(&omarchy_theme).ok();
-    // Main config is optional — if only theme exists, still proceed
-    let main_content = std::fs::read_to_string(&main_config).ok();
+    // Check omarchy theme first (Linux-specific, it's the active one on this machine).
+    #[cfg(target_os = "linux")]
+    let omarchy_theme = Some(home.join(".config/omarchy/current/theme/alacritty.toml"));
+    #[cfg(not(target_os = "linux"))]
+    let omarchy_theme: Option<PathBuf> = None;
+
+    let main_config_paths = [
+        config_dir.join("alacritty/alacritty.toml"),
+        #[cfg(target_os = "macos")]
+        home.join("Library/Application Support/alacritty/alacritty.toml"),
+    ];
+
+    let theme_content = omarchy_theme.and_then(|p| std::fs::read_to_string(&p).ok());
+    let main_content = main_config_paths
+        .iter()
+        .find_map(|p| std::fs::read_to_string(p).ok());
 
     // Need at least one of the two files
     if theme_content.is_none() && main_content.is_none() {
@@ -300,8 +362,9 @@ fn set_ansi(ansi: &mut [[u8; 3]; 16], range: std::ops::Range<usize>, line: &str,
 
 // ─── Kitty ────────────────────────────────────────────────────────────────────
 
-fn load_kitty(home: &PathBuf) -> Option<(String, f32, Option<UserColors>)> {
-    let config_path = home.join(".config/kitty/kitty.conf");
+fn load_kitty(config_dir: &PathBuf) -> Option<(String, f32, Option<UserColors>)> {
+    // Kitty config location: ~/.config/kitty/kitty.conf (same on Linux/macOS)
+    let config_path = config_dir.join("kitty/kitty.conf");
     let content = std::fs::read_to_string(&config_path).ok()?;
 
     let mut font_family = system_monospace_font();
@@ -353,6 +416,143 @@ fn load_kitty(home: &PathBuf) -> Option<(String, f32, Option<UserColors>)> {
     ))
 }
 
+// ─── Windows Terminal ─────────────────────────────────────────────────────────
+
+#[cfg(windows)]
+fn load_windows_terminal(home: &PathBuf) -> Option<(String, f32, Option<UserColors>)> {
+    // Windows Terminal settings location:
+    // %LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json
+    // or for Windows Terminal Preview:
+    // %LOCALAPPDATA%\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json
+
+    let local_app_data = std::env::var("LOCALAPPDATA").ok()?;
+    let local_app_data = PathBuf::from(local_app_data);
+
+    let settings_paths = [
+        local_app_data
+            .join("Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json"),
+        local_app_data.join(
+            "Packages/Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe/LocalState/settings.json",
+        ),
+    ];
+
+    let content = settings_paths
+        .iter()
+        .find_map(|p| std::fs::read_to_string(p).ok())?;
+
+    // Parse JSON settings
+    let settings: serde_json::Value = serde_json::from_str(&content).ok()?;
+
+    let mut font_family = system_monospace_font();
+    let mut font_size = 14.0f32;
+
+    // Get default profile settings
+    if let Some(profiles) = settings.get("profiles") {
+        if let Some(defaults) = profiles.get("defaults") {
+            if let Some(face) = defaults
+                .get("font")
+                .and_then(|f| f.get("face"))
+                .and_then(|f| f.as_str())
+            {
+                font_family = face.to_string();
+            }
+            if let Some(size) = defaults
+                .get("font")
+                .and_then(|f| f.get("size"))
+                .and_then(|s| s.as_f64())
+            {
+                font_size = size as f32;
+            }
+            // Legacy font settings
+            if let Some(face) = defaults.get("fontFace").and_then(|f| f.as_str()) {
+                font_family = face.to_string();
+            }
+            if let Some(size) = defaults.get("fontSize").and_then(|s| s.as_f64()) {
+                font_size = size as f32;
+            }
+        }
+    }
+
+    // Parse color scheme
+    let colors = parse_windows_terminal_colors(&settings);
+
+    Some((font_family, font_size, colors))
+}
+
+#[cfg(windows)]
+fn parse_windows_terminal_colors(settings: &serde_json::Value) -> Option<UserColors> {
+    // Find the active color scheme name
+    let scheme_name = settings
+        .get("profiles")
+        .and_then(|p| p.get("defaults"))
+        .and_then(|d| d.get("colorScheme"))
+        .and_then(|s| s.as_str())
+        .unwrap_or("Campbell");
+
+    // Find the scheme in the schemes array
+    let schemes = settings.get("schemes")?.as_array()?;
+    let scheme = schemes
+        .iter()
+        .find(|s| s.get("name").and_then(|n| n.as_str()) == Some(scheme_name))?;
+
+    let mut colors = UserColors::default();
+    let mut found_any = false;
+
+    if let Some(bg) = scheme
+        .get("background")
+        .and_then(|v| v.as_str())
+        .and_then(parse_hex_color)
+    {
+        colors.background = bg;
+        found_any = true;
+    }
+    if let Some(fg) = scheme
+        .get("foreground")
+        .and_then(|v| v.as_str())
+        .and_then(parse_hex_color)
+    {
+        colors.foreground = fg;
+        found_any = true;
+    }
+
+    // ANSI colors mapping
+    let color_keys = [
+        "black",
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "purple",
+        "cyan",
+        "white",
+        "brightBlack",
+        "brightRed",
+        "brightGreen",
+        "brightYellow",
+        "brightBlue",
+        "brightPurple",
+        "brightCyan",
+        "brightWhite",
+    ];
+
+    for (i, key) in color_keys.iter().enumerate() {
+        if let Some(rgb) = scheme
+            .get(*key)
+            .and_then(|v| v.as_str())
+            .and_then(parse_hex_color)
+        {
+            colors.ansi[i] = rgb;
+            found_any = true;
+        }
+    }
+
+    if found_any {
+        Some(colors)
+    } else {
+        None
+    }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 fn strip_key<'a>(line: &'a str, key: &str) -> Option<&'a str> {
@@ -384,17 +584,37 @@ fn parse_hex_color(s: &str) -> Option<[u8; 3]> {
     }
 }
 
-/// Ask fontconfig for the system monospace font name.
+/// Get the system monospace font in a cross-platform way
 fn system_monospace_font() -> String {
-    // Try fc-match first.
-    if let Ok(out) = std::process::Command::new("fc-match")
-        .args(["monospace", "--format=%{family}"])
-        .output()
+    #[cfg(target_os = "linux")]
     {
-        let name = String::from_utf8_lossy(&out.stdout).trim().to_string();
-        if !name.is_empty() {
-            return name;
+        // Try fc-match (fontconfig) on Linux
+        if let Ok(out) = std::process::Command::new("fc-match")
+            .args(["monospace", "--format=%{family}"])
+            .output()
+        {
+            let name = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !name.is_empty() {
+                return name;
+            }
         }
+        "monospace".to_string()
     }
-    "monospace".to_string()
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS default monospace font
+        "Menlo".to_string()
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // Windows default monospace font (Cascadia Mono is modern, Consolas is fallback)
+        "Cascadia Mono".to_string()
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        "monospace".to_string()
+    }
 }

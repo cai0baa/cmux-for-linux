@@ -5,12 +5,17 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v0.1.4)'
+        required: false
+        type: string
 
 permissions:
   contents: write
 
 jobs:
-  publish-tauri:
+  build-linux:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -25,30 +30,125 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
       - name: Install Linux system dependencies
-        run: >-
-          sudo apt-get update &&
-          sudo apt-get install -y
-          libwebkit2gtk-4.1-dev
-          build-essential
-          curl
-          wget
-          file
-          libssl-dev
-          libayatana-appindicator3-dev
-          librsvg2-dev
-          patchelf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
 
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and publish release bundles
+      - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "CMux Linux ${{ github.ref_name }}"
-          releaseBody: "Automated release for ${{ github.ref_name }}."
-          releaseDraft: false
+          releaseName: "CMux ${{ github.ref_name }}"
+          releaseBody: |
+            ## CMux ${{ github.ref_name }}
+            
+            Cross-platform terminal workspace manager.
+            
+            ### Downloads
+            - **Linux**: `.deb` (Debian/Ubuntu) or `.AppImage` (universal)
+            - **macOS**: `.dmg` (see macOS build)
+            - **Windows**: `.exe` installer (see Windows build)
+            
+            ### Notes
+            - Browser pane is fully functional on Linux
+            - macOS/Windows: Terminal works, browser pane coming soon
+          releaseDraft: true
+          prerelease: false
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: arm64
+          - target: x86_64-apple-darwin
+            arch: x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "CMux ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "CMux ${{ github.ref_name }}"
+          releaseDraft: true
           prerelease: false
