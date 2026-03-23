@@ -1,16 +1,16 @@
 {
-  "name": "cmux-linux",
+  "name": "ptrcode",
   "private": true,
   "version": "0.1.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:cmux-ui": "tsc && VITE_UI_VARIANT=cmux vite build",
+    "build:ptrcode-ui": "tsc && VITE_UI_VARIANT=ptrcode vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev:default": "npm run tauri dev",
-    "tauri:dev:cmux-ui": "VITE_UI_VARIANT=cmux npm run tauri dev"
+    "tauri:dev:ptrcode-ui": "VITE_UI_VARIANT=ptrcode npm run tauri dev"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

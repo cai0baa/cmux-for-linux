@@ -1,23 +1,23 @@
-# cmux-linux
+# ptrcode
 
-A Linux-native GUI terminal workspace manager inspired by [cmux](https://github.com/manaflow-ai/cmux) (macOS). Built with Tauri v2, React, and xterm.js.
+A cross-platform AI agent terminal workspace. Built with Tauri v2, React, and xterm.js. Inspired by [cmux](https://github.com/manaflow-ai/cmux) (macOS).
 
 ## Why I built this
 
-My first idea was to just add Linux support for CMUX directly, but after reading the PRs from their repo, I realized that if they really want to add support, they will eventually.
+My first idea was to just add Linux support for cmux directly, but after reading the PRs from their repo, I realized that if they really want to add support, they will eventually.
 
-And that's where this project comes to life! I wanted to create something inspired by cmux for Linux. I know Linux has tmux which is actually great, however the UI/UX from cmux has me fallen in love.
+And that's where this project comes to life! I wanted to create something inspired by cmux that runs on Linux, macOS, and Windows. I know Linux has tmux which is actually great, however the UI/UX from cmux has me fallen in love.
 
-This project is open source for now, but I have plans and more features for the future.
+This project is open source. I have plans and more features for the future — especially multi-agent coordination workflows.
 
-CMux Linux is built to bring a fast, keyboard-first terminal workspace experience to Linux with a native desktop app feel. The goal is to make multi-pane, multi-workspace development smooth without forcing users into a browser-only workflow or heavy IDE.
+ptrcode is built to bring a fast, keyboard-first terminal workspace experience to all platforms with a native desktop app feel. The goal is to make multi-pane, multi-workspace development smooth without forcing users into a browser-only workflow or heavy IDE.
 
 ## Project direction
 
-- **Near term**: stable Linux releases with easy install paths (AppImage + `.deb`)
+- **Near term**: stable cross-platform releases with easy install paths
 - **Product quality**: stronger polish in interaction, performance, and accessibility
-- **Power features**: richer automation and agent workflows over time
-- **Distribution**: broader packaging options (for example Flatpak) after core release flow is stable
+- **Power features**: multi-agent swarm coordination (ptrcode's key differentiator)
+- **Distribution**: broader packaging options after core release flow is stable
 
 ## Features
 
@@ -27,6 +27,7 @@ CMux Linux is built to bring a fast, keyboard-first terminal workspace experienc
 - **Command Palette**: Quick access to all commands via fuzzy search
 - **Customizable Keybindings**: Remap any shortcut to your preference
 - **Persistent State**: Workspaces and layouts are saved across sessions
+- **Cross-platform**: Linux, macOS, and Windows
 
 ## Installation
 
@@ -34,13 +35,12 @@ CMux Linux is built to bring a fast, keyboard-first terminal workspace experienc
 
 Download artifacts from the latest release:
 
-<https://github.com/cai0baa/cmux-for-linux/releases/latest>
+<https://github.com/cai0baa/ptrcode/releases/latest>
 
-#### AppImage (works on most Linux distros)
+#### AppImage (Linux, works on most distros)
 
 ```bash
-# Download the latest *.AppImage asset from Releases
-gh release download --repo cai0baa/cmux-for-linux --pattern "*.AppImage"
+gh release download --repo cai0baa/ptrcode --pattern "*.AppImage"
 chmod +x ./*.AppImage
 ./*.AppImage
 ```
@@ -48,10 +48,29 @@ chmod +x ./*.AppImage
 #### Debian/Ubuntu (.deb)
 
 ```bash
-# Download the latest *.deb asset from Releases
-gh release download --repo cai0baa/cmux-for-linux --pattern "*.deb"
+gh release download --repo cai0baa/ptrcode --pattern "*.deb"
 sudo apt install ./*.deb
 ```
+
+#### macOS (.dmg)
+
+```bash
+gh release download --repo cai0baa/ptrcode --pattern "*.dmg"
+```
+
+Open the `.dmg` and drag ptrcode to Applications.
+
+> **macOS Security Warning**: Because ptrcode is not yet notarized with Apple, macOS will show an "unverified developer" warning on first open. To bypass: right-click the app → **Open** → Open. Or from Terminal: `xattr -d com.apple.quarantine /Applications/ptrcode.app`
+
+#### Windows (.zip portable or NSIS installer)
+
+```bash
+gh release download --repo cai0baa/ptrcode --pattern "*.zip"
+```
+
+Extract and run `ptrcode.exe`.
+
+> **Windows Security Warning**: Because ptrcode is not yet code-signed with an Authenticode certificate, Windows SmartScreen will warn "Windows protected your PC". Click **More info** → **Run anyway** to proceed.
 
 ### Build from Source
 
@@ -59,36 +78,35 @@ sudo apt install ./*.deb
 
 - [Rust](https://rustup.rs/) (latest stable)
 - [Node.js](https://nodejs.org/) (v18+)
-- System dependencies for Tauri on Linux:
+- System dependencies:
+
   ```bash
   # Debian/Ubuntu
   sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libayatana-appindicator3-dev librsvg2-dev
-  
+
   # Fedora
   sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel
-  
+
   # Arch
   sudo pacman -S webkit2gtk-4.1 base-devel curl wget file openssl appmenu-gtk-module libappindicator-gtk3 librsvg
+
+  # macOS — install Xcode Command Line Tools
+  xcode-select --install
+
+  # Windows — install Visual Studio Build Tools with C++ workload
   ```
 
 ```bash
-# Clone the repository
-git clone https://github.com/cai0baa/cmux-for-linux.git
-cd cmux-for-linux
-
-# Install dependencies
+git clone https://github.com/cai0baa/ptrcode.git
+cd ptrcode
 npm install
-
-# Run in development mode
-npm run tauri dev
-
-# Build for production
-npm run tauri build
+npm run tauri dev       # development
+npm run tauri build     # production build
 ```
 
 ## Keyboard Shortcuts
 
-All shortcuts use Ctrl-based modifiers (Linux-native).
+All shortcuts use Ctrl-based modifiers.
 
 ### Global
 

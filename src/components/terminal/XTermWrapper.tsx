@@ -288,8 +288,28 @@ export default memo(function XTermWrapper({
               agentStatus = "done";
             }
 
+            // Filter out terminal chrome / status bar noise before storing as log line.
+            // These patterns match Claude Code's bottom status bar (token cost, session info)
+            // and other terminal UI lines that aren't meaningful agent output.
+            const isNoiseLine =
+              /\d+k?\s+tokens/i.test(stripped) ||
+              /access \d+/i.test(stripped) ||
+              /past research/i.test(stripped) ||
+              /http:\/\/localhost/i.test(stripped) ||
+              /^\s*[\u2500-\u257F]+\s*$/.test(stripped) || // box-drawing chars only
+              stripped.length < 3;
+
+            // When agent returns to shell prompt (done/idle), clear the log line.
+            // For noise lines, omit the key entirely so the previous meaningful value is preserved.
+            const isShellPrompt = /^>\s*$/.test(stripped) || /\$\s*$/.test(stripped);
+            const logLineUpdate = isShellPrompt
+              ? { lastLogLine: undefined }          // clear on shell prompt
+              : isNoiseLine
+                ? {}                               // preserve previous value for noise
+                : { lastLogLine: lastLine };       // update with meaningful line
+
             usePaneMetadataStore.getState().setMetadata(sessionId, {
-              lastLogLine: lastLine,
+              ...logLineUpdate,
               ...(agentStatus ? { agentStatus } : {}),
             });
             // Trigger notification only when pane is not active and not suppressed

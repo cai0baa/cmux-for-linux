@@ -1,5 +1,7 @@
 # ptrcode vs BridgeSpace — Gap Analysis
 
+_Last updated: 2026-03-23 — reflects v0.1.3 multiplatform release (Linux + macOS + Windows)._
+
 ## Feature Parity Matrix
 
 | Feature | BridgeSpace | ptrcode | Priority |
@@ -16,7 +18,7 @@
 | SWARM_BOARD.md protocol | ✅ Yes | ❌ Planned | **Critical** |
 | Role injection (CLAUDE.md) | ✅ Automated | ❌ Planned | **Critical** |
 | Swarm wizard UI | ✅ Yes | ❌ Planned | High |
-| Cross-platform (macOS/Win) | ✅ All 3 | ❌ Linux only | High |
+| Cross-platform (macOS/Win) | ✅ All 3 | ✅ v0.1.3 | Done |
 | Kanban task board | ✅ Full | ❌ Not planned | Low |
 | Skills/prompt library | ✅ Yes | ❌ Not planned | Low |
 | Voice input (Whisper) | ✅ BridgeVoice | ❌ Future | Low |
@@ -43,7 +45,7 @@
 1. Add `#[cfg(target_os = "linux")]` guards around all GTK/webkit2gtk code in `BrowserManager`
 2. Add wry-native fallback for browser pane on macOS/Windows
 3. Replace Unix socket with TCP for `ptrd` (works on all platforms)
-4. Add macOS `.dmg` and Windows `.msi/.exe` build targets to `tauri.conf.json` + CI
+4. Add macOS `.dmg` and Windows `.msi/.exe` build targets to `tauri.conf.json` + CI ✅ Done in v0.1.3
 
 ### Phase 2: Swarm Core (highest differentiation)
 5. Build `ptrd` daemon — axum-based HTTP + WebSocket server on configurable port (default 7342, avoid conflict with BridgeSpace)

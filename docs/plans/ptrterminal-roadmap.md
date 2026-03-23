@@ -13,6 +13,7 @@
 | URL detection → open in browser pane | ✅ Done — WebLinksAddon routes to `handleUrlClick` in TerminalPane |
 | Error boundaries on pane tabs | ✅ Done — `ErrorBoundary` wraps each tab content with Retry button |
 | Agent status badges (working/waiting/done) | ✅ Done — `agentStatus` in metadata store, parsed from terminal output, pulsing dot in tab bar |
+| Cross-platform support (macOS + Windows) | ✅ Done — macOS .dmg and Windows NSIS installer added in v0.1.3 |
 
 ---
 
@@ -58,7 +59,7 @@ ptrterminal's unique position on Linux (open-source, wry browser with privileged
 
 ## No-Go For Now
 
-- **Multiplatform (macOS/Windows)**: Browser pane requires completely separate implementation per platform (NSView/HWND). Not worth until Linux feature set is solid and there's demand.
+- ~~**Multiplatform (macOS/Windows)**~~: ✅ Shipped in v0.1.3. Browser pane is Linux-only for now; core terminal works cross-platform.
 - **SSH sessions**: High effort, low differentiation (everyone has SSH clients).
 - **i18n**: Premature (~50 strings, low ROI).
 - **Light theme**: Low priority; GTK theme integration would be more impactful but also more complex.

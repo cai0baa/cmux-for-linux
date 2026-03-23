@@ -33,6 +33,10 @@ AI agent terminal workspace built with Tauri v2 + React + xterm.js.
 - [search-and-command-palette.md](features/implemented/search-and-command-palette.md) — Terminal find bar, Ctrl+Shift+P palette
 - [socket-api-and-automation.md](features/implemented/socket-api-and-automation.md) — Unix socket JSON-RPC, CLI tool
 
+### Research & Competitive Analysis
+- [bridgespace-re/README.md](bridgespace-re/README.md) — BridgeSpace reverse engineering findings (stack, architecture, swarm protocol, auth, voice, network)
+- [bridgespace-re/09-competitive/ptrcode-gaps.md](bridgespace-re/09-competitive/ptrcode-gaps.md) — Feature gap analysis and recommended build order for ptrcode
+
 ### Features — Pending (from cmux reference)
 - [ssh-remote-sessions.md](features/pending/ssh-remote-sessions.md) — SSH daemon, reconnect, port forwarding
 - [rich-browser.md](features/pending/rich-browser.md) — Profiles, history, DevTools, search engine
