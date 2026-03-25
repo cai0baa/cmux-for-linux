@@ -5,7 +5,7 @@ export const BUILT_IN_AGENTS: AgentDefinition[] = [
     id: "shell",
     name: "Shell",
     description: "Default system shell",
-    command: "/bin/bash",
+    command: "",
     args: [],
     icon: "$",
     color: "#a6e3a1",

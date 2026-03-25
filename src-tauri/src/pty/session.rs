@@ -41,7 +41,25 @@ impl PtySession {
             .openpty(size)
             .map_err(|e| format!("Failed to open PTY: {e}"))?;
 
-        let mut cmd = CommandBuilder::new(command);
+        let mut cmd = {
+            #[cfg(target_os = "windows")]
+            {
+                let mut cmd = CommandBuilder::new("powershell");
+                if !command.is_empty() {
+                    cmd.arg("-NoProfile");
+                    cmd.arg("-Command");
+                    cmd.arg(command);
+                }
+                cmd
+            }
+
+            #[cfg(not(target_os = "windows"))]
+            {
+                if command.is_empty() { CommandBuilder::new("/bin/bash") }
+                else { CommandBuilder::new(command) }
+            }
+        };
+
         cmd.args(args);
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
