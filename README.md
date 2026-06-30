@@ -45,6 +45,8 @@ chmod +x ./*.AppImage
 ./*.AppImage
 ```
 
+If the AppImage opens to a blank white window on Wayland, see [Linux AppImage troubleshooting](docs/linux-appimage-troubleshooting.md).
+
 #### Debian/Ubuntu (.deb)
 
 ```bash
