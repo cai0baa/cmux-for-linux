@@ -55,8 +55,11 @@ impl PtySession {
 
             #[cfg(not(target_os = "windows"))]
             {
-                if command.is_empty() { CommandBuilder::new("/bin/bash") }
-                else { CommandBuilder::new(command) }
+                if command.is_empty() {
+                    CommandBuilder::new(crate::shell::default_shell())
+                } else {
+                    CommandBuilder::new(command)
+                }
             }
         };
 

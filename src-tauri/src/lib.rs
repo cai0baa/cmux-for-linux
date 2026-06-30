@@ -3,6 +3,7 @@ mod commands;
 mod db;
 mod events;
 mod pty;
+mod shell;
 mod socket;
 pub mod terminal_config;
 

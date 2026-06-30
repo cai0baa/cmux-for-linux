@@ -22,7 +22,7 @@ fn rgb_hex(c: [u8; 3]) -> String {
 #[tauri::command]
 pub fn get_terminal_config() -> TerminalConfigPayload {
     let cfg = crate::terminal_config::load();
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+    let shell = crate::shell::default_shell();
     TerminalConfigPayload {
         font_family: cfg.font_family,
         font_size: cfg.font_size,
